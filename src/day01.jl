@@ -2,14 +2,19 @@ module Day01
 
 function day01()
     inputs = readlines(joinpath(@__DIR__, "../data/day01.txt"))
-    return solve(inputs)
+    return [solve(inputs), solve(inputs, true)]
 end
 
-function solve(list::Array{String,1})
+function solve(list::Array{String,1}, part_2=false)
     sum = 0
 
     for line in list
         number_str = ""
+
+        if part_2
+            # Replace string representarions of digits with actual digits
+            line = string_to_digit(line)
+        end
 
         # Split line into Array{String, 1} where each String has length of 1
         for string in split(line, "")
@@ -35,6 +40,29 @@ function solve(list::Array{String,1})
     end
 
     return sum
+end
+
+function string_to_digit(s::String)
+    # Replace number strings that share characters...
+    s = replace(s,
+        "twone" => "twoone",
+        "oneight" => "oneeight",
+        "threeight" => "threeeight",
+        "fiveight" => "fiveeight",
+        "sevenine" => "sevennine",
+        "eightwo" => "eighttwo",
+        "eighthree" => "eightthree")
+
+    return replace(s,
+        "one" => "1",
+        "two" => "2",
+        "three" => "3",
+        "four" => "4",
+        "five" => "5",
+        "six" => "6",
+        "seven" => "7",
+        "eight" => "8",
+        "nine" => "9")
 end
 
 end # module
