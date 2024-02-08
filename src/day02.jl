@@ -12,27 +12,28 @@ MAX_GREEN_CUBES = 13
 MAX_BLUE_CUBES = 14
 
 function solve(list::Array{String,1}, part_2=false)::Int64
-    if part_2
-        return 1
-    end
+    games = map(parse_game, list)
 
     sum = 0
-    for line in list
-        game = parse_game(line)
+    if part_2
+        for game in games
+            sum += power(get_minimum_cube_set(game))
+        end
+    else
+        for game in games
+            add = true
+            for set in game.sets
+                if set.red > MAX_RED_CUBES || set.green > MAX_GREEN_CUBES || set.blue > MAX_BLUE_CUBES
+                    # Impossible state, exclude
+                    add = false
+                end
+            end
 
-        add = true
-        for set in game.sets
-            if set.red > MAX_RED_CUBES || set.green > MAX_GREEN_CUBES || set.blue > MAX_BLUE_CUBES
-                # Impossible state, exclude
-                add = false
+            if add
+                sum += game.id
             end
         end
-
-        if add
-            sum += game.id
-        end
     end
-    println(sum)
     return sum
 end
 
@@ -42,11 +43,28 @@ struct CubeSet
     green::Int64
     blue::Int64
 end
+"Calculate the power of a CubeSet as defined in problem statement"
+function power(set::CubeSet)::Int64
+    return set.red * set.green * set.blue
+end
 
 "Game definiton"
 struct Game
     id::Int64
     sets::Vector{CubeSet}
+end
+function get_minimum_cube_set(game::Game)::CubeSet
+    red = 0
+    green = 0
+    blue = 0
+
+    for set in game.sets
+        red = max(red, set.red)
+        green = max(green, set.green)
+        blue = max(blue, set.blue)
+    end
+
+    return CubeSet(red, green, blue)
 end
 
 "Parse raw string data into Game struct"
