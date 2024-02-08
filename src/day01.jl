@@ -1,11 +1,13 @@
 module Day01
-
-function day01()
+"""
+Load inputs and solve the [Day 1](https://adventofcode.com/2023/day/1) puzzle.
+"""
+function run()::Tuple{Int64,Int64}
     inputs = readlines(joinpath(@__DIR__, "../data/day01.txt"))
-    return [solve(inputs), solve(inputs, true)]
+    return solve(inputs), solve(inputs, true)
 end
 
-function solve(list::Array{String,1}, part_2=false)
+function solve(list::Array{String,1}, part_2=false)::Int64
     sum = 0
 
     for line in list
@@ -42,7 +44,13 @@ function solve(list::Array{String,1}, part_2=false)
     return sum
 end
 
-function string_to_digit(s::String)
+"""
+Replace substrings within s matching a digit's string representaion into their respective digit.
+
+Ex: "hellonethereighttwoone" => "hell1ther821"
+    "shareeighthreecharacters" => "share83characters"
+"""
+function string_to_digit(s::String)::String
     # Replace number strings that share characters...
     s = replace(s,
         "twone" => "twoone",
