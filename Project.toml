@@ -1,0 +1,4 @@
+name = "AdventOfCode2023"
+uuid = "0200dd15-7e5f-4cde-9e65-25d268f9d011"
+authors = ["IronBatman2715 <72224765+IronBatman2715@users.noreply.github.com>"]
+version = "0.1.0"
