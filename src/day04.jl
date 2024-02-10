@@ -8,17 +8,16 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(list::Vector{String}, part_2=false)::Int
+    cards = map(parse_card, list)
+
     out = 0
     if part_2
-        out = 1
+        out = sum(count_total_cards(cards))
     else
-        cards = map(parse_card, list)
-
         for card in cards
             out += score_card(card)
         end
     end
-    # println(out)
     return out
 end
 
@@ -54,18 +53,46 @@ function parse_numbers(str::AbstractString)::Vector{UInt}
     return map(s -> parse(UInt, s), num_strs)
 end
 
-function score_card(card::Card)::UInt
+function get_matching_number_count(card::Card)::UInt
     match_count = 0
     for winning_number in card.winning_numbers, chosen_number in card.chosen_numbers
         if winning_number == chosen_number
             match_count += 1
         end
     end
+    return match_count
+end
 
+function score_card(card::Card)::UInt
+    match_count = get_matching_number_count(card)
     if match_count > 0
         return 2^(match_count - 1)
     end
     return 0
+end
+
+function count_total_cards(cards::Vector{Card})::Vector{UInt}
+    # Initialize card_count based off cards
+    no_copies_card_count = length(cards)
+    card_count::Vector{UInt} = fill(UInt(1), no_copies_card_count)
+
+    for card in cards
+        match_count = get_matching_number_count(card)
+
+        # Run for each card instance according to card_count (1 + number of accumulated copies)
+        for _ in 1:card_count[card.id]
+            # Increment next `match_count` cards in card_count by 1
+            if match_count > 0
+                for j in 1:match_count
+                    if card.id + j > no_copies_card_count
+                        break
+                    end
+                    card_count[card.id+j] += 1
+                end
+            end
+        end
+    end
+    return card_count
 end
 
 end # module
