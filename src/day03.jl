@@ -5,12 +5,12 @@ using AdventOfCode2023
 """
 Load inputs and solve the [Day 3](https://adventofcode.com/2023/day/3) puzzle.
 """
-function run()::Tuple{Int64,Int64}
+function run()::Tuple{Int,Int}
     inputs::Vector{String} = split(AdventOfCode2023.data[3], '\n')
     return solve(inputs), solve(inputs, true)
 end
 
-function solve(schematic::Array{String,1}, part_2=false)::Int64
+function solve(schematic::Vector{String}, part_2=false)::Int
     matrix = string_arr_to_matrix(schematic)
 
     if part_2
@@ -28,7 +28,7 @@ function solve(schematic::Array{String,1}, part_2=false)::Int64
     end
 end
 
-function string_arr_to_matrix(str::Array{String,1})::Matrix{Char}
+function string_arr_to_matrix(str::Vector{String})::Matrix{Char}
     n = length(str[1]) # number of columns
     m = length(str) # number of rows
 
@@ -50,7 +50,7 @@ function string_arr_to_matrix(str::Array{String,1})::Matrix{Char}
     return matrix
 end
 
-function get_next_pos(matrix::Matrix{Char}, curr_pos::Tuple{Int64,Int64})::Union{Some{Tuple{Int64,Int64}},Nothing}
+function get_next_pos(matrix::Matrix{Char}, curr_pos::Tuple{Int,Int})::Union{Some{Tuple{Int,Int}},Nothing}
     m, n = size(matrix)
     i, j = curr_pos
 
@@ -62,7 +62,7 @@ function get_next_pos(matrix::Matrix{Char}, curr_pos::Tuple{Int64,Int64})::Union
     return nothing
 end
 
-function get_next_adj_pos(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64}, curr_pos::Tuple{Int64,Int64})::Union{Some{Tuple{Int64,Int64}},Nothing}
+function get_next_adj_pos(matrix::Matrix{Char}, home_pos::Tuple{Int,Int}, curr_pos::Tuple{Int,Int})::Union{Some{Tuple{Int,Int}},Nothing}
     m, n = size(matrix)
     i, j = curr_pos
     Δi, Δj = curr_pos .- home_pos
@@ -102,7 +102,7 @@ function get_next_adj_pos(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64}, cu
     return nothing
 end
 
-function analyze_matrix(matrix::Matrix{Char}, curr_pos::Tuple{Int64,Int64}=(1, 1), sum::Int64=0)::Int64
+function analyze_matrix(matrix::Matrix{Char}, curr_pos::Tuple{Int,Int}=(1, 1), sum::Int=0)::Int
     c = matrix[curr_pos[1], curr_pos[2]]
 
     if !isdigit(c)
@@ -138,7 +138,7 @@ function analyze_matrix(matrix::Matrix{Char}, curr_pos::Tuple{Int64,Int64}=(1, 1
     return analyze_matrix(matrix, something(maybe_next_pos), sum)
 end
 
-function get_adjacent_numbers(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64})::Vector{Int64}
+function get_adjacent_numbers(matrix::Matrix{Char}, home_pos::Tuple{Int,Int})::Vector{Int}
     numbers = []
     curr_pos = home_pos
     while true
@@ -173,7 +173,7 @@ function get_adjacent_numbers(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64}
     end
 end
 
-function has_adjacent_symbol(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64})::Bool
+function has_adjacent_symbol(matrix::Matrix{Char}, home_pos::Tuple{Int,Int})::Bool
     m, n = size(matrix)
     for i in -1:1, j in -1:1
         if i == 0 && j == 0
@@ -193,7 +193,7 @@ function has_adjacent_symbol(matrix::Matrix{Char}, home_pos::Tuple{Int64,Int64})
     return false
 end
 
-function get_full_number(matrix::Matrix{Char}, pos::Tuple{Int64,Int64})::Int64
+function get_full_number(matrix::Matrix{Char}, pos::Tuple{Int,Int})::Int
     m, n = size(matrix)
     i, j = pos
     str::Vector{Char} = [matrix[i, j]]
@@ -209,10 +209,10 @@ function get_full_number(matrix::Matrix{Char}, pos::Tuple{Int64,Int64})::Int64
         jp += 1
     end
 
-    return parse(Int64, String(str))
+    return parse(Int, String(str))
 end
 
-function get_gear_ratio(matrix::Matrix{Char}, pos::Tuple{Int64,Int64})::Int64
+function get_gear_ratio(matrix::Matrix{Char}, pos::Tuple{Int,Int})::Int
     adj_nums = get_adjacent_numbers(matrix, pos)
     gear_count = length(adj_nums)
     if gear_count < 2
