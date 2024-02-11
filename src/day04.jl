@@ -13,15 +13,11 @@ end
 function solve(list::Vector{String}, part_2=false)::Int
     cards = map(parse_card, list)
 
-    out = 0
     if part_2
-        out = sum(count_total_cards(cards))
+        return sum(count_total_cards(cards))
     else
-        for card in cards
-            out += score_card(card)
-        end
+        return sum(score_card, cards)
     end
-    return out
 end
 
 "Card definiton"
