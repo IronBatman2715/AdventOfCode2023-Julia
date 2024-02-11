@@ -1,9 +1,12 @@
 module Day02
+
+using AdventOfCode2023
+
 """
 Load inputs and solve the [Day 2](https://adventofcode.com/2023/day/2) puzzle.
 """
 function run()::Tuple{Int64,Int64}
-    inputs = readlines(joinpath(@__DIR__, "../data/day02.txt"))
+    inputs::Vector{String} = split(AdventOfCode2023.data[2], '\n')
     return solve(inputs), solve(inputs, true)
 end
 
