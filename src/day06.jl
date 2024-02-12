@@ -11,13 +11,8 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
-    race_records = parse_input(input)
-
-    if part_2
-        return 1
-    else
-        return prod(*, [length(get_winning_times(race_record)) for race_record in race_records])
-    end
+    race_records = parse_input(input, part_2)
+    return prod(*, [length(get_winning_times(race_record)) for race_record in race_records])
 end
 
 struct RaceRecord
@@ -25,35 +20,48 @@ struct RaceRecord
     record_dist::Int
 end
 
-function parse_input(input::String)::Vector{RaceRecord}
+function parse_input(input::String, part_2::Bool)::Vector{RaceRecord}
     lines = split(strip(input), '\n')
     if length(lines) != 2
         error("Malformed input string")
     end
 
-    times::Vector{Int} = parse_values(lines[1])
-    record_dists::Vector{Int} = parse_values(lines[2])
+    times::Vector{Int} = parse_values(lines[1], part_2)
+    record_dists::Vector{Int} = parse_values(lines[2], part_2)
 
     if length(times) != length(record_dists)
         error("Received different number of times and record_dists")
     end
     num_race_records = length(times)
 
+    if part_2 && num_race_records != 1
+        error("Incorrectly parsed part_2 input!")
+    end
+
     return [RaceRecord(times[i], record_dists[i]) for i in 1:num_race_records]
 end
 
-function parse_values(str::AbstractString)::Vector{Int}
+function parse_values(str::AbstractString, part_2::Bool)::Vector{Int}
     str_vec = split(strip(str), ':')
     if length(str_vec) != 2
         error("Unexpected values format")
     end
 
-    value_strs = split(strip(str_vec[2]))
-    if length(value_strs) < 1
-        error("Couldn't parse ANY values")
-    end
+    if part_2
+        str_vec = split(strip(str), ':')
+        if length(str_vec) != 2
+            error("Unexpected values format")
+        end
 
-    return [parse(Int, value_str) for value_str in value_strs]
+        return [parse(Int, replace(strip(str_vec[2]), " " => ""))]
+    else
+        value_strs = split(strip(str_vec[2]))
+        if length(value_strs) < 1
+            error("Couldn't parse ANY values")
+        end
+
+        return [parse(Int, value_str) for value_str in value_strs]
+    end
 end
 
 """
