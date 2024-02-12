@@ -2,7 +2,7 @@ module AdventOfCode2023
 
 using Printf
 
-day_nums = 1:5
+day_nums = 1:6
 data::Vector{String} = []
 for day_num in day_nums
     day_num_str = @sprintf("%.2d", day_num)
