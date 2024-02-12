@@ -109,37 +109,71 @@ function parse_value_map(str::AbstractString)::ValueMap
     return ValueMap(sub_maps)
 end
 
-function follow_value_map(src_val::Int, value_map::ValueMap)::Int
-    for value_sub_map in value_map.sub_maps
-        if value_sub_map.src_range.min ≤ src_val && src_val ≤ value_sub_map.src_range.max
-            return src_val + value_sub_map.Δvalue
+function map_range(value_range::ValueRange{Int}, value_map::ValueMap)::Vector{ValueRange{Int}}
+    out::Vector{ValueRange{Int}} = []
+    for sub_map in value_map.sub_maps
+        map_min, map_max = sub_map.src_range.min, sub_map.src_range.max
+        Δ = sub_map.Δvalue
+
+        if map_min < value_range.min && value_range.max < map_max
+            # sub_map completely encloses value_range
+            new_min, new_max = (value_range.min, value_range.max) .+ Δ
+            push!(out, ValueRange(new_min, new_max))
+
+        elseif value_range.min < map_min && map_max < value_range.max
+            # value_range completely encloses sub_map
+            new_min, new_max = (map_min, map_max) .+ Δ
+            push!(out, ValueRange(new_min, new_max))
+
+        elseif value_range.max <= map_max && map_min <= value_range.max
+            # sub_map does not cover entire lower bound of value_range, but goes up to or beyond upper bound
+            new_min, new_max = (max(map_min, value_range.min), value_range.max) .+ Δ
+            push!(out, ValueRange(new_min, new_max))
+
+        elseif map_min <= value_range.min && value_range.min <= map_max
+            # sub_map does not cover entire upper bound of value_range, but goes up to or beyond lower bound
+            new_min, new_max = (value_range.min, min(map_max, value_range.max)) .+ Δ
+            push!(out, ValueRange(new_min, new_max))
+
+        else
+            # no intersection, do nothing
         end
     end
-    return src_val
-end
 
-function follow_all_value_maps(src_val::Int, almanac::Almanac)::Int
-    out = src_val
-    for value_map in almanac.value_maps
-        out = follow_value_map(out, value_map)
+    if length(out) == 0
+        # Mapping is 1-to-1 for entire range
+        return [value_range]
     end
+
     return out
 end
 
+function map_range_thru_all(value_range::ValueRange{Int}, value_maps::Vector{ValueMap})::Vector{ValueRange{Int}}
+    mapped_ranges = map_range(value_range, value_maps[1])
+    if length(value_maps) == 1
+        return mapped_ranges
+    end
+
+    for value_map in value_maps[2:end]
+        mapped_ranges = reduce(vcat, [map_range(mapped_range, value_map) for mapped_range in mapped_ranges])
+    end
+    return mapped_ranges
+end
+
 function get_minimum_location(almanac::Almanac)::Int
-    out = nothing
+    min_location = nothing
     for seed_range in almanac.seed_ranges
-        for seed_val in seed_range.min:seed_range.max
-            location = follow_all_value_maps(seed_val, almanac)
-            if isnothing(out)
-                out = Some(location)
-            elseif location < something(out)
-                out = Some(location)
-            end
+        location_mappings = map_range_thru_all(seed_range, almanac.value_maps)
+        local_min_location = minimum([location_mapping.min for location_mapping in location_mappings])
+
+        if isnothing(min_location)
+            min_location = Some(local_min_location)
+        elseif local_min_location < something(min_location)
+            min_location = Some(local_min_location)
         end
     end
 
-    return something(out)
+    return something(min_location)
 end
 
 end # module
