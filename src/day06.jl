@@ -100,47 +100,56 @@ function get_optimal_time(race_record::RaceRecord)::Float64
     race_record.time / 2.0
 end
 
+function get_t0_limits(race_record::RaceRecord)
+    # Find when record_dist < dist(t0) = t0(t-t0) is no longer true
+    # 
+    # 0 = dist(t0) - record_dist = t0(t-t0) - record_dist = t0^2 - tt0 + record_dist
+    # 
+    # quadratic formula => t0 = (-(-t) ± sqrt((-t)^2 - 4(1)(record_dist))) / 2(1) = (t ± sqrt(t^2 - 4 * record_dist)) / 2
+
+    t = race_record.time
+    record_dist = race_record.record_dist
+
+    discriminant = t^2 - 4 * record_dist
+    if discriminant < 0
+        error("Record distance should be impossible...?")
+    end
+    if discriminant == 0
+        return t / 2, t / 2
+    end
+
+    sqrt_discriminant = sqrt(discriminant)
+
+    t0_lower_lim = (t - sqrt_discriminant) / 2
+    t0_upper_lim = (t + sqrt_discriminant) / 2
+
+    return t0_lower_lim, t0_upper_lim
+end
+
 function get_winning_times(race_record::RaceRecord)::Vector{Int}
     winning_times::Vector{Int} = []
 
     t0_best = get_optimal_time(race_record)
     is_t0_best_float = t0_best != round(t0_best)
+
+    t0_lower_lim, t0_upper_lim = get_t0_limits(race_record)
+    t0_lower_lim_int::Int = t0_lower_lim == round(t0_lower_lim) ? t0_lower_lim + 1 : ceil(t0_lower_lim)
+    t0_upper_lim_int::Int = t0_upper_lim == round(t0_upper_lim) ? t0_upper_lim - 1 : floor(t0_upper_lim)
+
+    # Add values in -t0 direction
+    t0_best_lower_int = is_t0_best_float ? floor(t0_best) : t0_best - 1
+    append!(winning_times, t0_lower_lim_int:t0_best_lower_int)
+
     if !is_t0_best_float
         # t0_best is an integer. Add to valid winning times
         push!(winning_times, t0_best)
     end
 
-    # Test in -t0 direction until failure
-    t0 = t0_best
-    while true
-        if t0 == t0_best && is_t0_best_float
-            t0 = floor(t0_best) # Start of loop and need to round downward
-        else
-            t0 -= 1
-        end
+    # Add values in +t0 direction
+    t0_best_upper_int = is_t0_best_float ? ceil(t0_best) : t0_best + 1
+    append!(winning_times, t0_best_upper_int:t0_upper_lim_int)
 
-        dist = boat_distance(t0, race_record.time)
-        (dist > race_record.record_dist && 0 <= t0 && t0 <= race_record.time) || break
-
-        push!(winning_times, t0)
-    end
-
-    # Test in +t0 direction until failure
-    t0 = t0_best
-    while true
-        if t0 == t0_best && is_t0_best_float
-            t0 = ceil(t0_best) # Start of loop and need to round upward
-        else
-            t0 += 1
-        end
-
-        dist = boat_distance(t0, race_record.time)
-        (dist > race_record.record_dist && 0 <= t0 && t0 <= race_record.time) || break
-
-        push!(winning_times, t0)
-    end
-
-    return sort(winning_times)
+    return winning_times
 end
 
 end # module
