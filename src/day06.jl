@@ -12,7 +12,7 @@ end
 
 function solve(input::String, part_2=false)::Int
     race_records = parse_input(input, part_2)
-    return prod(*, [length(get_winning_times(race_record)) for race_record in race_records])
+    return prod(*, [get_quantity_of_winning_times(race_record) for race_record in race_records])
 end
 
 struct RaceRecord
@@ -126,8 +126,38 @@ function get_t0_limits(race_record::RaceRecord)
     return t0_lower_lim, t0_upper_lim
 end
 
-function get_winning_times(race_record::RaceRecord)::Vector{Int}
-    winning_times::Vector{Int} = []
+# Left for reference
+#
+# function get_winning_times(race_record::RaceRecord)::Vector{Int}
+#     winning_times::Vector{Int} = []
+#
+#     t0_best = get_optimal_time(race_record)
+#     is_t0_best_float = t0_best != round(t0_best)
+#
+#     t0_lower_lim, t0_upper_lim = get_t0_limits(race_record)
+#     t0_lower_lim_int::Int = t0_lower_lim == round(t0_lower_lim) ? t0_lower_lim + 1 : ceil(t0_lower_lim)
+#     t0_upper_lim_int::Int = t0_upper_lim == round(t0_upper_lim) ? t0_upper_lim - 1 : floor(t0_upper_lim)
+#
+#     # Adding in the following order assures that the output is already sorted
+#
+#     # Add values in -t0 direction
+#     t0_best_lower_int = is_t0_best_float ? floor(t0_best) : t0_best - 1
+#     append!(winning_times, t0_lower_lim_int:t0_best_lower_int)
+#
+#     if !is_t0_best_float
+#         # t0_best is an integer. Add to valid winning times
+#         push!(winning_times, t0_best)
+#     end
+#
+#     # Add values in +t0 direction
+#     t0_best_upper_int = is_t0_best_float ? ceil(t0_best) : t0_best + 1
+#     append!(winning_times, t0_best_upper_int:t0_upper_lim_int)
+#
+#     return winning_times
+# end
+
+function get_quantity_of_winning_times(race_record::RaceRecord)::Int
+    quantity::Int = 0
 
     t0_best = get_optimal_time(race_record)
     is_t0_best_float = t0_best != round(t0_best)
@@ -138,18 +168,18 @@ function get_winning_times(race_record::RaceRecord)::Vector{Int}
 
     # Add values in -t0 direction
     t0_best_lower_int = is_t0_best_float ? floor(t0_best) : t0_best - 1
-    append!(winning_times, t0_lower_lim_int:t0_best_lower_int)
+    quantity += t0_best_lower_int - t0_lower_lim_int + 1
 
     if !is_t0_best_float
         # t0_best is an integer. Add to valid winning times
-        push!(winning_times, t0_best)
+        quantity += 1
     end
 
     # Add values in +t0 direction
     t0_best_upper_int = is_t0_best_float ? ceil(t0_best) : t0_best + 1
-    append!(winning_times, t0_best_upper_int:t0_upper_lim_int)
+    quantity += t0_upper_lim_int - t0_best_upper_int + 1
 
-    return winning_times
+    return quantity
 end
 
 end # module
