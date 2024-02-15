@@ -12,12 +12,14 @@ end
 
 function solve(input::String, part_2=false)::Int
     histories = parse_input(input)
+    direction = part_2 ? previous::Direction : next::Direction
 
-    if part_2
-        return sum([extrapolate_previous_history_value(history) for history in histories])
-    else
-        return sum([extrapolate_next_history_value(history) for history in histories])
-    end
+    return sum([extrapolate_history_value(direction, history) for history in histories])
+end
+
+@enum Direction begin
+    previous
+    next
 end
 
 function parse_input(input::String)::Vector{Vector{Int}}
@@ -30,36 +32,25 @@ function parse_input(input::String)::Vector{Vector{Int}}
     return [[parse(Int, num) for num in split(strip(line))] for line in lines]
 end
 
-function extrapolate_next_history_value(history::Vector{Int})::Int
+function extrapolate_history_value(direction::Direction, history::Vector{Int})::Int
     diffs = history
-    last_diffs::Vector{Int} = []
+    extrema_diffs::Vector{Int} = []
     while true
         new_diffs = [diffs[i+1] - diffs[i] for i in 1:(length(diffs)-1)]
 
-        push!(last_diffs, new_diffs[end])
+        push!(extrema_diffs, new_diffs[direction == next::Direction ? end : 1])
         diffs = new_diffs
 
         !all(v -> v == 0, new_diffs) || break
     end
 
-    total_diff = sum(last_diffs)
-    return history[end] + total_diff
-end
-
-function extrapolate_previous_history_value(history::Vector{Int})::Int
-    diffs = history
-    first_diffs::Vector{Int} = []
-    while true
-        new_diffs = [diffs[i+1] - diffs[i] for i in 1:(length(diffs)-1)]
-
-        push!(first_diffs, new_diffs[1])
-        diffs = new_diffs
-
-        !all(v -> v == 0, new_diffs) || break
+    if direction == next::Direction
+        total_diff = sum(extrema_diffs)
+        return history[end] + total_diff
+    else
+        total_diff = sum(extrema_diffs[2:2:end]) - sum(extrema_diffs[1:2:end])
+        return history[1] + total_diff
     end
-
-    total_diff = sum(first_diffs[2:2:end]) - sum(first_diffs[1:2:end])
-    return history[1] + total_diff
 end
 
 end # module
