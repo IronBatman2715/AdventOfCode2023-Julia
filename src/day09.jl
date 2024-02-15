@@ -11,10 +11,11 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
+    histories = parse_input(input)
+
     if part_2
-        return 1
+        return sum([extrapolate_previous_history_value(history) for history in histories])
     else
-        histories = parse_input(input)
         return sum([extrapolate_next_history_value(history) for history in histories])
     end
 end
@@ -41,11 +42,24 @@ function extrapolate_next_history_value(history::Vector{Int})::Int
         !all(v -> v == 0, new_diffs) || break
     end
 
-    next_value = history[end]
-    for last_diff in reverse(last_diffs[1:end-1])
-        next_value += last_diff
+    total_diff = sum(last_diffs)
+    return history[end] + total_diff
+end
+
+function extrapolate_previous_history_value(history::Vector{Int})::Int
+    diffs = history
+    first_diffs::Vector{Int} = []
+    while true
+        new_diffs = [diffs[i+1] - diffs[i] for i in 1:(length(diffs)-1)]
+
+        push!(first_diffs, new_diffs[1])
+        diffs = new_diffs
+
+        !all(v -> v == 0, new_diffs) || break
     end
-    return next_value
+
+    total_diff = sum(first_diffs[2:2:end]) - sum(first_diffs[1:2:end])
+    return history[1] + total_diff
 end
 
 end # module
