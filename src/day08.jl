@@ -14,29 +14,14 @@ function solve(input::String, part_2=false)::Int
     instructions, desert_network = parse_input(input)
 
     if part_2
-        return 1
+        start_nodes = filter(s -> s != "", [endswith(k, 'A') ? k : "" for (k, v) in desert_network])
+        is_end_node = curr_node -> !endswith(curr_node, 'Z')
+        steps_vec = [follow_network_from(start_node, is_end_node, instructions, desert_network) for start_node in start_nodes]
+
+        return lcm(steps_vec)
     else
-        curr_node = "AAA"
-        steps = 0
-        while true
-            for direction in collect(instructions)
-                dir_index = 1
-                if direction == 'L'
-                    dir_index = 1
-                elseif direction == 'R'
-                    dir_index = 2
-                else
-                    error("Invalid direction!")
-                end
-                curr_node = desert_network[curr_node][dir_index]
-
-                steps += 1
-            end
-
-            curr_node != "ZZZ" || break
-        end
-
-        return steps
+        is_end_node = curr_node -> curr_node != "ZZZ"
+        return follow_network_from("AAA", is_end_node, instructions, desert_network)
     end
 end
 
@@ -68,6 +53,29 @@ function parse_input(input::String)::Tuple{String,Dict{String,Tuple{String,Strin
     end
 
     return instructions, desert_network
+end
+
+# Not sure how to properly type `is_end_node`. Should be a closure accepting String and outputting Bool
+function follow_network_from(start_node::String, is_end_node, instructions::String, desert_network::Dict{String,Tuple{String,String}})::Int
+    curr_node = start_node
+    steps = 0
+    step_size = length(instructions)
+    while true
+        for direction in collect(instructions)
+            dir_index = 1
+            if direction == 'L'
+                dir_index = 1
+            elseif direction == 'R'
+                dir_index = 2
+            else
+                error("Invalid direction!")
+            end
+            curr_node = desert_network[curr_node][dir_index]
+        end
+        steps += step_size
+
+        is_end_node(curr_node) || return steps
+    end
 end
 
 end # module
