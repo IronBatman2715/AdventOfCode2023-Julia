@@ -11,14 +11,15 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
+    grid, start_index = parse_input(input)
+    path_indices = get_path_indices(grid, start_index)
+
     if part_2
-        return 1
+        remove_dead_pipes!(grid, path_indices)
+        return length(get_inside_indices(grid, path_indices))
     else
-        grid, start_index = parse_input(input)
-        path_length = get_path_length(grid, start_index)
-        if isodd(path_length)
-            error("path_length is an odd number")
-        end
+        path_length = length(path_indices)
+        @assert iseven(path_length) "Expected path_length to be even number"
         return path_length / 2
     end
 end
@@ -73,17 +74,52 @@ function parse_input(input::String)::Tuple{Matrix{Tile},CartesianIndex{2}}
         end
     end
     start_index = something(maybe_start)
+    grid[start_index] = infer_starting_tile(grid, start_index)
 
     return grid, start_index
 end
 
-function get_path_length(grid::Matrix{Tile}, start_index::CartesianIndex{2})::Int
-    path_length = 0
+function infer_starting_tile(grid::Matrix{Tile}, start_index::CartesianIndex{2})::Tile
+    # Go in all cardinal directions to find possible neighbors
+    possible_tiles = [vertical::Tile, horizantal::Tile, north_east::Tile, north_west::Tile, south_west::Tile, south_east::Tile]
+
+    # North
+    tile = grid[CartesianIndex(start_index[1] - 1, start_index[2])]
+    if tile == vertical::Tile || tile == south_west::Tile || tile == south_east::Tile
+        intersect!(possible_tiles, [vertical::Tile, north_west::Tile, north_east::Tile])
+    end
+
+    # East
+    tile = grid[CartesianIndex(start_index[1], start_index[2] + 1)]
+    if tile == horizantal::Tile || tile == north_west::Tile || tile == south_west::Tile
+        intersect!(possible_tiles, [horizantal::Tile, north_east::Tile, south_east::Tile])
+    end
+
+    # South
+    tile = grid[CartesianIndex(start_index[1] + 1, start_index[2])]
+    if tile == vertical::Tile || tile == north_west::Tile || tile == north_east::Tile
+        intersect!(possible_tiles, [vertical::Tile, south_west::Tile, south_east::Tile])
+    end
+
+    # West
+    tile = grid[CartesianIndex(start_index[1], start_index[2] - 1)]
+    if tile == horizantal::Tile || tile == north_east::Tile || tile == south_east::Tile
+        intersect!(possible_tiles, [horizantal::Tile, north_west::Tile, south_west::Tile])
+    end
+
+    if length(possible_tiles) != 1
+        error("Expected 1 and only 1 possible start tile variant")
+    end
+
+    return possible_tiles[1]
+end
+
+function get_path_indices(grid::Matrix{Tile}, start_index::CartesianIndex{2})::Vector{CartesianIndex{2}}
+    path_indices::Vector{CartesianIndex{2}} = []
     prev_index = start_index
     curr_index = start_index
     while true
-        # println("$curr_index -> $(REVERSE_TILE_MAP[grid[curr_index]])")
-        path_length += 1
+        push!(path_indices, curr_index)
 
         # Update next_index
         next_index = get_next_neighbor_index(grid, curr_index, prev_index)
@@ -92,7 +128,7 @@ function get_path_length(grid::Matrix{Tile}, start_index::CartesianIndex{2})::In
         prev_index = curr_index
         curr_index = next_index
 
-        curr_index != start_index || return path_length
+        curr_index != start_index || return path_indices
     end
 end
 
@@ -120,42 +156,8 @@ function get_pipe_neighbor_indices(grid::Matrix{Tile}, home_index::CartesianInde
         error("Ground tile has no neighbors!")
 
     elseif home_tile == starting_position::Tile
-        # Go in all cardinal directions to find neighbors
-        out::Vector{CartesianIndex{2}} = []
+        error("Starting position should have been removed with inferred value first")
 
-        # North
-        north_index = CartesianIndex(home_index[1] - 1, home_index[2])
-        north_tile = grid[north_index]
-        if north_tile == vertical::Tile || north_tile == south_west::Tile || north_tile == south_east::Tile
-            push!(out, north_index)
-        end
-
-        # East
-        east_index = CartesianIndex(home_index[1], home_index[2] + 1)
-        east_tile = grid[east_index]
-        if east_tile == horizantal::Tile || east_tile == north_west::Tile || east_tile == south_west::Tile
-            push!(out, east_index)
-        end
-
-        # South
-        south_index = CartesianIndex(home_index[1] + 1, home_index[2])
-        south_tile = grid[south_index]
-        if south_tile == vertical::Tile || south_tile == north_west::Tile || south_tile == north_east::Tile
-            push!(out, south_index)
-        end
-
-        # West
-        west_index = CartesianIndex(home_index[1], home_index[2] - 1)
-        west_tile = grid[west_index]
-        if west_tile == horizantal::Tile || west_tile == north_east::Tile || west_tile == south_east::Tile
-            push!(out, west_index)
-        end
-
-        if length(out) != 2
-            error("Expected 2 and only 2 neighbors for starting position")
-        end
-
-        return out
     else
         error("Could not match grid[home_index] to valid Tile variant")
     end
@@ -168,6 +170,66 @@ function get_next_neighbor_index(grid::Matrix{Tile}, curr_index::CartesianIndex{
     end
 
     return prev_index == neighbor_indices[1] ? neighbor_indices[2] : neighbor_indices[1]
+end
+
+"Replace all pipes not in path with `ground::Tile`"
+function remove_dead_pipes!(grid::Matrix{Tile}, path_indices::Vector{CartesianIndex{2}})
+    for idx in CartesianIndices(grid)
+        if grid[idx] != ground::Tile && !any(path_index -> path_index == idx, path_indices)
+            grid[idx] = ground::Tile
+        end
+    end
+end
+
+"""
+Follow rows of `grid` to get indices of all tiles that are enclosed by the path
+
+Odd num of pipe crossings in all directions => Inside loop
+Even num of pipe crossing in all directions => Outside loop
+
+If testing crossing and riding along pipe, only consider crossing if the pipe eventually splits to opposing directions
+"""
+function get_inside_indices(grid::Matrix{Tile}, path_indices::Vector{CartesianIndex{2}})::Vector{CartesianIndex{2}}
+    inside_indices::Vector{CartesianIndex{2}} = []
+
+    for i in axes(grid, 2)
+        is_inside = false
+        maybe_facing_northward_pipe::Union{Some{Bool},Nothing} = nothing
+        for j in axes(grid, 1)
+            tile_index = CartesianIndex(i, j)
+            tile = grid[tile_index]
+
+            if tile == vertical::Tile
+                @assert isnothing(maybe_facing_northward_pipe) "Expected to NOT be following pipe right now"
+                is_inside = !is_inside
+
+            elseif tile == horizantal::Tile
+                @assert !isnothing(maybe_facing_northward_pipe) "Expected to have encountered angled tile BEFORE this point"
+
+            elseif tile == north_east::Tile || tile == south_east::Tile
+                @assert isnothing(maybe_facing_northward_pipe) "Expected to have just started looking at pipe crossing"
+                maybe_facing_northward_pipe = Some(tile == north_east::Tile)
+
+            elseif tile == south_west::Tile || tile == north_west::Tile
+                @assert !isnothing(maybe_facing_northward_pipe) "Expected to be following pipe right now"
+                if tile != (something(maybe_facing_northward_pipe) ? north_west::Tile : south_west::Tile)
+                    is_inside = !is_inside
+                end
+                maybe_facing_northward_pipe = nothing
+
+            elseif tile == ground::Tile
+                # do nothing
+            else
+                error("Unexpected tile type! Make sure `remove_dead_pipes!` is run before this function")
+            end
+
+            if is_inside && !any(v -> v == tile_index, path_indices)
+                push!(inside_indices, tile_index)
+            end
+        end
+    end
+
+    return inside_indices
 end
 
 end # module
