@@ -66,3 +66,9 @@ end
     @test part_1 == 9274989
     @test part_2 == 357134560737
 end
+
+@testset "Day 12" begin
+    part_1, part_2 = AdventOfCode2023.Day12.run()
+    @test part_1 == 6827
+    @test part_2 == 1
+end
