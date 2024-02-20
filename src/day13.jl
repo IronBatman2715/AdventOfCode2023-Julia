@@ -11,12 +11,8 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
-    if part_2
-        return 1
-    else
-        patterns = parse_input(input)
-        return sum([summarize_pattern(p) for p in patterns])
-    end
+    patterns = parse_input(input)
+    return sum([summarize_pattern(p, part_2) for p in patterns])
 end
 
 function parse_input(input::String)::Vector{Matrix{Bool}}
@@ -49,16 +45,28 @@ function parse_pattern(pattern_str::AbstractString)::Matrix{Bool}
     return pattern
 end
 
-function summarize_pattern(pattern::Matrix{Bool})::Int
+function summarize_pattern(pattern::Matrix{Bool}, part_2::Bool)::Int
     rows, cols = size(pattern)
 
     for i in 1:(rows-1)
-        is_mirrored = true
+        is_mirrored = false
         i_in, i_out = i, i + 1
         while true
-            if pattern[i_in, :] != pattern[i_out, :]
-                is_mirrored = false
-                break
+            mismatch_count = count(j -> pattern[i_in, j] != pattern[i_out, j], 1:cols)
+            if part_2
+                if mismatch_count > 1 || (is_mirrored && mismatch_count > 0)
+                    is_mirrored = false
+                    break
+                elseif mismatch_count == 1
+                    is_mirrored = true
+                end
+            else
+                if mismatch_count > 0
+                    is_mirrored = false
+                    break
+                else
+                    is_mirrored = true
+                end
             end
 
             i_in -= 1
@@ -71,12 +79,24 @@ function summarize_pattern(pattern::Matrix{Bool})::Int
     end
 
     for j in 1:(cols-1)
-        is_mirrored = true
+        is_mirrored = false
         j_in, j_out = j, j + 1
         while true
-            if pattern[:, j_in] != pattern[:, j_out]
-                is_mirrored = false
-                break
+            mismatch_count = count(i -> pattern[i, j_in] != pattern[i, j_out], 1:rows)
+            if part_2
+                if mismatch_count > 1 || (is_mirrored && mismatch_count > 0)
+                    is_mirrored = false
+                    break
+                elseif mismatch_count == 1
+                    is_mirrored = true
+                end
+            else
+                if mismatch_count > 0
+                    is_mirrored = false
+                    break
+                else
+                    is_mirrored = true
+                end
             end
 
             j_in -= 1
