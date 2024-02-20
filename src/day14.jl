@@ -11,13 +11,22 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
+    platform = parse_input(input)
+
     if part_2
-        return 1
+        spin_cycle!(platform, 1_000_000_000)
     else
-        platform = parse_input(input)
-        tilt_platform!(platform)
-        return calculate_load(platform)
+        tilt_platform!(platform, north::Direction)
     end
+
+    return calculate_load(platform)
+end
+
+@enum Direction begin
+    north
+    east
+    south
+    west
 end
 
 @enum Tile begin
@@ -42,6 +51,7 @@ function print_platform(platform::Matrix{Tile})
         end
         println()
     end
+    println()
 end
 
 function parse_input(input::String)::Matrix{Tile}
@@ -63,25 +73,82 @@ function parse_input(input::String)::Matrix{Tile}
     return platform
 end
 
-function tilt_platform!(platform::Matrix{Tile})
-    # Assume north for now
+function tilt_platform!(platform::Matrix{Tile}, direction::Direction)
+    rows, cols = size(platform)
 
-    # Go DOWN each column (north -> south), moving as far down as possible IF sphere::Tile
-    for j in axes(platform, 1)
-        for i in axes(platform, 2)
-            if platform[i, j] == sphere::Tile
-                i_new = i
-                while true
-                    ((i_new - 1) > 0 && platform[(i_new-1), j] == empty::Tile) || break
-                    i_new -= 1
-                end
+    if direction == north::Direction || direction == south::Direction
+        modifier = direction == north::Direction ? -1 : 1
+        rows_range = direction == north::Direction ? (1:rows) : (rows:-1:1)
 
-                if i_new != i
-                    platform[i, j] = empty::Tile
-                    platform[i_new, j] = sphere::Tile
+        for j in 1:cols
+            for i in rows_range
+                if platform[i, j] == sphere::Tile
+                    i_new = i
+                    while true
+                        ((i_new + modifier) > 0 && (i_new + modifier) <= rows && platform[(i_new+modifier), j] == empty::Tile) || break
+                        i_new += modifier
+                    end
+
+                    if i_new != i
+                        platform[i, j] = empty::Tile
+                        platform[i_new, j] = sphere::Tile
+                    end
                 end
             end
         end
+    elseif direction == west::Direction || direction == east::Direction
+        modifier = direction == west::Direction ? -1 : 1
+        cols_range = direction == west::Direction ? (1:cols) : (cols:-1:1)
+
+        for i in 1:rows
+            for j in cols_range
+                if platform[i, j] == sphere::Tile
+                    j_new = j
+                    while true
+                        ((j_new + modifier) > 0 && (j_new + modifier) <= cols && platform[i, (j_new+modifier)] == empty::Tile) || break
+                        j_new += modifier
+                    end
+
+                    if j_new != j
+                        platform[i, j] = empty::Tile
+                        platform[i, j_new] = sphere::Tile
+                    end
+                end
+            end
+        end
+    else
+        error("Unexpected direction variant")
+    end
+end
+
+function spin_cycle!(platform::Matrix{Tile}, max_cycle_count::Int)
+    cycle_platforms::Vector{Matrix{Tile}} = [deepcopy(platform)]
+    cycle_count = 0
+    loop_length = 0
+    is_on_finishing = false
+    while true
+        repeated_platform_indices = findall(p -> p == platform, cycle_platforms[1:end-1])
+        if length(repeated_platform_indices) > 0
+            @assert length(repeated_platform_indices) == 1 "Should exit before multiple matches appear"
+
+            if loop_length == 0
+                loop_length = cycle_count - (repeated_platform_indices[1] - 1)
+            end
+        end
+        tilt_platform!(platform, north::Direction)
+        tilt_platform!(platform, west::Direction)
+        tilt_platform!(platform, south::Direction)
+        tilt_platform!(platform, east::Direction)
+
+        push!(cycle_platforms, deepcopy(platform))
+
+        cycle_count += 1
+
+        if loop_length != 0
+            is_on_finishing = (((max_cycle_count) - cycle_count) % loop_length) == 0
+        end
+
+        (cycle_count <= max_cycle_count && !is_on_finishing) || break
     end
 end
 
