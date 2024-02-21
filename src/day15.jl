@@ -11,10 +11,11 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
+    step_strs = parse_input(input)
     if part_2
-        return 1
+        boxes = run_lens_box_steps(step_strs)
+        return calculate_total_lens_power(boxes)
     else
-        step_strs = parse_input(input)
         return sum([hash_string(step_str) for step_str in step_strs])
     end
 end
@@ -29,7 +30,7 @@ function parse_input(input::String)::Vector{String}
     return step_strs
 end
 
-function hash_string(str::String)::Int
+function hash_string(str::AbstractString)::Int
     @assert isascii(str) "Received non-ASCII string"
     val = 0
     for char in collect(str)
@@ -38,6 +39,58 @@ function hash_string(str::String)::Int
         val %= 256
     end
     return val
+end
+
+struct Lens
+    label::String
+    focal_length::Int
+end
+
+function run_lens_box_steps(step_strs::Vector{String})::Vector{Vector{Lens}}
+    boxes::Vector{Vector{Lens}} = fill([], 256)
+    for step_str in step_strs
+        if contains(step_str, '-')
+            @assert !contains(step_str, '=') "Contains multiple operation characters"
+
+            label = step_str[1:end-1]
+
+            box = boxes[hash_string(label)+1]
+
+            matches = findall(lens -> lens.label == label, box)
+            if length(matches) > 0
+                for match in reverse(matches)
+                    popat!(box, match)
+                end
+            end
+
+        elseif contains(step_str, '=')
+            @assert !contains(step_str, '-') "Contains multiple operation characters"
+
+            operator_split = split(step_str, '=')
+            @assert length(operator_split) == 2 "Unexpected step format"
+            new_lens = Lens(operator_split[1], parse(Int, operator_split[2]))
+
+            box = boxes[hash_string(new_lens.label)+1]
+
+            matches = findall(lens -> lens.label == new_lens.label, box)
+            if length(matches) > 0
+                for match in matches
+                    box[match] = new_lens
+                end
+            else
+                push!(box, new_lens)
+            end
+
+        else
+            error("Expected an operation character")
+        end
+    end
+
+    return boxes
+end
+
+function calculate_total_lens_power(boxes::Vector{Vector{Lens}})::Int
+    return sum([sum([box_num * slot_num * lens.focal_length for (slot_num, lens) in enumerate(box)]) for (box_num, box) in enumerate(boxes)])
 end
 
 end # module
