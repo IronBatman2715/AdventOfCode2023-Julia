@@ -134,15 +134,15 @@ function spin_cycle!(platform::Matrix{Tile}, max_cycle_count::Int)
             if loop_length == 0
                 loop_length = cycle_count - (repeated_platform_indices[1] - 1)
             end
+            copy!(platform, cycle_platforms[repeated_platform_indices[1]+1])
+        else
+            tilt_platform!(platform, north::Direction)
+            tilt_platform!(platform, west::Direction)
+            tilt_platform!(platform, south::Direction)
+            tilt_platform!(platform, east::Direction)
         end
-        tilt_platform!(platform, north::Direction)
-        tilt_platform!(platform, west::Direction)
-        tilt_platform!(platform, south::Direction)
-        tilt_platform!(platform, east::Direction)
-
-        push!(cycle_platforms, deepcopy(platform))
-
         cycle_count += 1
+        push!(cycle_platforms, deepcopy(platform))
 
         if loop_length != 0
             is_on_finishing = (((max_cycle_count) - cycle_count) % loop_length) == 0
