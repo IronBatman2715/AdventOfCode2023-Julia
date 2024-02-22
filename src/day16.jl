@@ -11,11 +11,38 @@ function run()::Tuple{Int,Int}
 end
 
 function solve(input::String, part_2=false)::Int
+    contraption = parse_input(input)
     if part_2
-        return 1
+        max_rows, max_cols = size(contraption)
+        energized_counts::Vector{Tuple{AttackBeam,Int}} = []
+
+        # Left & Right
+        for i in 1:max_rows
+            left_initial_beam = AttackBeam(CartesianIndex(i, 1), east::Direction)
+            push!(energized_counts, (left_initial_beam, count_energized(contraption, left_initial_beam)))
+            right_initial_beam = AttackBeam(CartesianIndex(i, max_cols), west::Direction)
+            push!(energized_counts, (right_initial_beam, count_energized(contraption, right_initial_beam)))
+        end
+        # Top & Bottom
+        for j in 1:max_cols
+            top_initial_beam = AttackBeam(CartesianIndex(1, j), south::Direction)
+            push!(energized_counts, (top_initial_beam, count_energized(contraption, top_initial_beam)))
+            bottom_initial_beam = AttackBeam(CartesianIndex(max_rows, j), north::Direction)
+            push!(energized_counts, (bottom_initial_beam, count_energized(contraption, bottom_initial_beam)))
+        end
+
+        best_initial_beam, max_energized_count = energized_counts[1]
+        for (initial_beam, energized_count) in energized_counts
+            if energized_count > max_energized_count
+                max_energized_count = energized_count
+                best_initial_beam = initial_beam
+            end
+        end
+        # println(best_initial_beam)
+
+        return max_energized_count
     else
-        contraption = parse_input(input)
-        return count_energized(contraption)
+        return count_energized(contraption, AttackBeam(CartesianIndex(1, 1), east::Direction))
     end
 end
 
@@ -197,8 +224,8 @@ function follow_beam(contraption::Matrix{Tile}, attack_beam::AttackBeam, attack_
     return attack_beams
 end
 
-function count_energized(contraption::Matrix{Tile})::Int
-    attack_beams = follow_beam(contraption, AttackBeam(CartesianIndex(1, 1), east::Direction))
+function count_energized(contraption::Matrix{Tile}, initial_beam::AttackBeam)::Int
+    attack_beams = follow_beam(contraption, initial_beam)
     return length(unique(map(attack_beam -> attack_beam.target_index, attack_beams)))
 end
 
