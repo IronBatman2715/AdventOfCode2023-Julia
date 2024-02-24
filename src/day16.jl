@@ -131,102 +131,90 @@ function get_next_index(curr_index::CartesianIndex{2}, direction::Direction, max
     end
 end
 
-function follow_beam(contraption::Matrix{Tile}, attack_beam::AttackBeam, attack_beams::Vector{AttackBeam}=Vector{AttackBeam}([]))::Vector{AttackBeam}
-    if attack_beam ∈ attack_beams
-        # If attack direction out of target index has been done before, return attack_beams now to exit what will be an infinite loop
-        return attack_beams
-    else
-        push!(attack_beams, attack_beam)
-    end
-    max_indices = size(contraption)
-    target_tile = contraption[attack_beam.target_index]
-
-    if target_tile == empty::Tile ||
-       (target_tile == vertical_splitter::Tile && (attack_beam.direction == north::Direction || attack_beam.direction == south::Direction)) ||
-       (target_tile == horizantal_splitter::Tile && (attack_beam.direction == east::Direction || attack_beam.direction == west::Direction))
-        maybe_next_index = get_next_index(attack_beam.target_index, attack_beam.direction, max_indices)
-        if !isnothing(maybe_next_index)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index), attack_beam.direction), attack_beams)
-        end
-
-    elseif target_tile == fourty_five_mirror::Tile
-        # /
-        out_direction = attack_beam.direction
-        if attack_beam.direction == north::Direction
-            out_direction = east::Direction
-        elseif attack_beam.direction == east::Direction
-            out_direction = north::Direction
-        elseif attack_beam.direction == south::Direction
-            out_direction = west::Direction
-        elseif attack_beam.direction == west::Direction
-            out_direction = south::Direction
-        else
-            error("Invalid attack direction entered")
-        end
-
-        maybe_next_index = get_next_index(attack_beam.target_index, out_direction, max_indices)
-        if !isnothing(maybe_next_index)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index), out_direction), attack_beams)
-        end
-
-    elseif target_tile == one_thirty_five_mirror::Tile
-        # \
-        out_direction = attack_beam.direction
-        if attack_beam.direction == north::Direction
-            out_direction = west::Direction
-        elseif attack_beam.direction == east::Direction
-            out_direction = south::Direction
-        elseif attack_beam.direction == south::Direction
-            out_direction = east::Direction
-        elseif attack_beam.direction == west::Direction
-            out_direction = north::Direction
-        else
-            error("Invalid attack direction entered")
-        end
-
-        maybe_next_index = get_next_index(attack_beam.target_index, out_direction, max_indices)
-        if !isnothing(maybe_next_index)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index), out_direction), attack_beams)
-        end
-
-    elseif target_tile == vertical_splitter::Tile
-        # |
-        @assert attack_beam.direction == east::Direction || attack_beam.direction == west::Direction "Unexpected direction into vertical splitter"
-
-        maybe_next_index_north = get_next_index(attack_beam.target_index, north::Direction, max_indices)
-        if !isnothing(maybe_next_index_north)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index_north), north::Direction), attack_beams)
-        end
-
-        maybe_next_index_south = get_next_index(attack_beam.target_index, south::Direction, max_indices)
-        if !isnothing(maybe_next_index_south)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index_south), south::Direction), attack_beams)
-        end
-
-    elseif target_tile == horizantal_splitter::Tile
-        # -
-        @assert attack_beam.direction == north::Direction || attack_beam.direction == south::Direction "Unexpected direction into horizantal splitter"
-
-        maybe_next_index_east = get_next_index(attack_beam.target_index, east::Direction, max_indices)
-        if !isnothing(maybe_next_index_east)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index_east), east::Direction), attack_beams)
-        end
-
-        maybe_next_index_west = get_next_index(attack_beam.target_index, west::Direction, max_indices)
-        if !isnothing(maybe_next_index_west)
-            attack_beams = follow_beam(contraption, AttackBeam(something(maybe_next_index_west), west::Direction), attack_beams)
-        end
-
-    else
-        error("Invalid tile type")
-    end
-
-    return attack_beams
-end
-
 function count_energized(contraption::Matrix{Tile}, initial_beam::AttackBeam)::Int
-    attack_beams = follow_beam(contraption, initial_beam)
-    return length(unique(map(attack_beam -> attack_beam.target_index, attack_beams)))
+    sub_beams::Set{AttackBeam} = Set([])
+    sub_beam_queue::Vector{AttackBeam} = [initial_beam]
+    max_indices = size(contraption)
+
+    is_start = true
+    while !isempty(sub_beam_queue)
+        curr_sub_beam = popfirst!(sub_beam_queue)
+
+        if !is_start
+            maybe_next_index = get_next_index(curr_sub_beam.target_index, curr_sub_beam.direction, max_indices)
+            if isnothing(maybe_next_index)
+                continue
+            end
+            curr_sub_beam = AttackBeam(something(maybe_next_index), curr_sub_beam.direction)
+        else
+            is_start = false
+        end
+
+        curr_tile = contraption[curr_sub_beam.target_index]
+        if curr_tile == empty::Tile ||
+           (curr_tile == vertical_splitter::Tile && (curr_sub_beam.direction == north::Direction || curr_sub_beam.direction == south::Direction)) ||
+           (curr_tile == horizantal_splitter::Tile && (curr_sub_beam.direction == east::Direction || curr_sub_beam.direction == west::Direction))
+            if curr_sub_beam ∉ sub_beams
+                push!(sub_beams, curr_sub_beam)
+                push!(sub_beam_queue, curr_sub_beam)
+            end
+
+        elseif curr_tile == fourty_five_mirror::Tile
+            # /
+            out_direction = curr_sub_beam.direction
+            if curr_sub_beam.direction == north::Direction
+                out_direction = east::Direction
+            elseif curr_sub_beam.direction == east::Direction
+                out_direction = north::Direction
+            elseif curr_sub_beam.direction == south::Direction
+                out_direction = west::Direction
+            elseif curr_sub_beam.direction == west::Direction
+                out_direction = south::Direction
+            else
+                error("Invalid attack direction entered")
+            end
+            curr_sub_beam = AttackBeam(curr_sub_beam.target_index, out_direction)
+
+            if curr_sub_beam ∉ sub_beams
+                push!(sub_beams, curr_sub_beam)
+                push!(sub_beam_queue, curr_sub_beam)
+            end
+
+        elseif curr_tile == one_thirty_five_mirror::Tile
+            # \
+            out_direction = curr_sub_beam.direction
+            if curr_sub_beam.direction == north::Direction
+                out_direction = west::Direction
+            elseif curr_sub_beam.direction == east::Direction
+                out_direction = south::Direction
+            elseif curr_sub_beam.direction == south::Direction
+                out_direction = east::Direction
+            elseif curr_sub_beam.direction == west::Direction
+                out_direction = north::Direction
+            else
+                error("Invalid attack direction entered")
+            end
+            curr_sub_beam = AttackBeam(curr_sub_beam.target_index, out_direction)
+
+            if curr_sub_beam ∉ sub_beams
+                push!(sub_beams, curr_sub_beam)
+                push!(sub_beam_queue, curr_sub_beam)
+            end
+
+        elseif curr_tile == vertical_splitter::Tile || curr_tile == horizantal_splitter::Tile
+            # | -
+            for out_direction in (curr_tile == vertical_splitter::Tile ? [north::Direction, south::Direction] : [east::Direction, west::Direction])
+                curr_sub_beam = AttackBeam(curr_sub_beam.target_index, out_direction)
+                if curr_sub_beam ∉ sub_beams
+                    push!(sub_beams, curr_sub_beam)
+                    push!(sub_beam_queue, curr_sub_beam)
+                end
+            end
+
+        end
+    end
+
+    return length(unique([sub_beam.target_index for sub_beam in sub_beams]))
 end
 
 end # module
